@@ -21,7 +21,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ---- runtime: the same slim Python, just the venv and the app, no uv, no build tools ----
 FROM python:3.12-slim-bookworm
 
-RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin nono
+RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin nono \
+    && mkdir /data && chown nono:nono /data
 
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
@@ -31,7 +32,11 @@ RUN python -m compileall -q app
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    NONO_DB=/data/nono.db
+
+# The only writable place: every day's puzzle is stored here the first time it's served.
+VOLUME /data
 
 USER nono
 EXPOSE 8000
