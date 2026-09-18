@@ -63,29 +63,16 @@ if ("serviceWorker" in navigator) {
 // Cuelume loads as an ES module and sets window.cuelume; until then this is a no-op.
 const sfx = (name, volume = 1) => window.cuelume?.play(name, { volume });
 
-// Every block start array for `blocks` that fits `known` (1 filled, 0 empty, null unknown).
-function placements(blocks, known) {
-  const n = known.length, out = [], starts = [];
-  const rec = (bi, pos) => {
-    if (bi === blocks.length) {
-      for (let k = pos; k < n; k++) if (known[k] === 1) return;
-      out.push(starts.slice());
-      return;
-    }
-    const b = blocks[bi];
-    let reserved = 0;
-    for (let j = bi + 1; j < blocks.length; j++) reserved += blocks[j] + 1;
-    for (let s = pos; s + b + reserved <= n; s++) {
-      if (s > pos && known[s - 1] === 1) break; // a fill would be left uncovered
-      let fits = true;
-      for (let k = s; k < s + b; k++) if (known[k] === 0) { fits = false; break }
-      if (!fits || known[s + b] === 1) continue;
-      starts[bi] = s;
-      rec(bi + 1, s + b + 1);
-    }
-  };
-  rec(0, 0);
-  return out;
+// How many blocks are finished counting in from the start of a line: walk until the first
+// undecided square; a block counts once an X or the edge closes it.
+function sealedFromStart(line) {
+  let sealed = 0, inBlock = false;
+  for (const v of line) {
+    if (v === EMPTY) return sealed;
+    if (v === FILL) inBlock = true;
+    else if (inBlock) { sealed++; inBlock = false }
+  }
+  return sealed + (inBlock ? 1 : 0);
 }
 
 document.addEventListener("alpine:init", () => {
@@ -157,17 +144,14 @@ document.addEventListener("alpine:init", () => {
     col(c) { return Array.from({ length: this.size }, (_, r) => r * this.size + c) },
     lineDone(idx) { return idx.every((i) => this.solution[i] !== "1" || this.cells[i] === FILL) },
 
-    // A clue number is locked once its block can only sit in one place and is fully filled.
-    // Every mark on the board is verified, so the marks are safe to reason from.
+    // A clue number greys out once nothing can be added on its side of the line: every square
+    // from the nearer edge up to and including its block is decided (XXX■ greys, ___■ doesn't).
+    // Every mark is verified, so the Nth finished block from an edge is the Nth number from that end.
     lineLocks(clue, idx) {
-      if (clue[0] === 0) return [true];
-      const known = idx.map((i) => (this.cells[i] === FILL ? 1 : this.cells[i] === X ? 0 : null));
-      const opts = placements(clue, known);
-      if (!opts.length) return clue.map(() => false);
-      return clue.map((b, k) => {
-        const s = opts[0][k];
-        return opts.every((o) => o[k] === s) && idx.slice(s, s + b).every((i) => this.cells[i] === FILL);
-      });
+      if (clue[0] === 0) return [true]; // an empty line never gets anything added
+      const line = idx.map((i) => this.cells[i]);
+      const fromStart = sealedFromStart(line), fromEnd = sealedFromStart(line.reverse());
+      return clue.map((_, k) => k < fromStart || k >= clue.length - fromEnd);
     },
 
     updateLocks() {
