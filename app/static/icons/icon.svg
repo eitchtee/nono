@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Pixel "N" solved on a 5x5 nonogram grid -->
+  <rect width="32" height="32" rx="7" fill="#2a2622"/>
+  <g fill="#f4efe6">
+    <rect x="5.3" y="5.3" width="3.4" height="3.4" rx=".5"/><rect x="23.3" y="5.3" width="3.4" height="3.4" rx=".5"/>
+    <rect x="5.3" y="9.8" width="3.4" height="3.4" rx=".5"/><rect x="9.8" y="9.8" width="3.4" height="3.4" rx=".5"/><rect x="23.3" y="9.8" width="3.4" height="3.4" rx=".5"/>
+    <rect x="5.3" y="14.3" width="3.4" height="3.4" rx=".5"/><rect x="14.3" y="14.3" width="3.4" height="3.4" rx=".5"/><rect x="23.3" y="14.3" width="3.4" height="3.4" rx=".5"/>
+    <rect x="5.3" y="18.8" width="3.4" height="3.4" rx=".5"/><rect x="18.8" y="18.8" width="3.4" height="3.4" rx=".5"/><rect x="23.3" y="18.8" width="3.4" height="3.4" rx=".5"/>
+    <rect x="5.3" y="23.3" width="3.4" height="3.4" rx=".5"/><rect x="23.3" y="23.3" width="3.4" height="3.4" rx=".5"/>
+  </g>
+</svg>

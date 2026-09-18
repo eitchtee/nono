@@ -1,0 +1,62 @@
+<section class="board" x-data='nono({{ cfg | tojson }})'
+  @pointermove.window="move($event)" @pointerup.window="up()" @pointercancel.window="up()">
+
+  <!-- The labels sit in the corners of the puzzle block, so they line up with its edges. -->
+  <div class="puzzle">
+  <div class="puzzle-bar">
+    <h2 class="puzzle-date"><span x-text="shortDate"></span> <b>#{{ cfg.number }}</b></h2>
+    <span class="meta">{{ cfg.label }} · {{ p.size }}×{{ p.size }}</span>
+  </div>
+
+  <div class="grid" style="--n: {{ p.size }}; --rc: {{ row_clue_len }}"
+    @pointerdown="down($event)" @contextmenu.prevent :class="{ over }">
+    <div class="corner"></div>
+    {% for clue in p.cols %}{% set c = loop.index0 %}
+    <div class="clue col {% if c % 5 == 4 and not loop.last %}sep{% endif %}">
+      {%- for n in clue %}<span :class="{ done: locks.cols[{{ c }}]?.[{{ loop.index0 }}] }">{{ n }}</span>{% endfor -%}
+    </div>
+    {% endfor %}
+    {% for r in range(p.size) %}
+    <div class="clue row {% if r % 5 == 4 and r != p.size - 1 %}sep{% endif %}">
+      {%- for n in p.rows[r] %}<span :class="{ done: locks.rows[{{ r }}]?.[{{ loop.index0 }}] }">{{ n }}</span>{% endfor -%}
+    </div>
+      {% for c in range(p.size) %}{% set i = r * p.size + c %}
+    <div class="cell {% if c % 5 == 4 and c != p.size - 1 %}sep-r{% endif %} {% if r % 5 == 4 and r != p.size - 1 %}sep-b{% endif %}"
+      data-i="{{ i }}" :class="cls({{ i }})"></div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+
+  <div class="puzzle-bar">
+    <span class="progress" x-text="`${filled} / ${total}`"></span>
+    <span class="lives" :aria-label="livesLabel">
+      <template x-for="n in maxLives"><span :class="{ lost: n > lives }">♥</span></template>
+    </span>
+  </div>
+  </div>
+
+  <button class="tools" role="switch" aria-label="{{ t.mark_with_x }}" data-cuelume-toggle x-show="!over"
+    :aria-checked="tool === 'x'" @click="tool = tool === 'fill' ? 'x' : 'fill'">
+    <span class="thumb" aria-hidden="true"></span>
+    <span class="opt" :class="{ on: tool === 'fill' }"><i class="swatch fill"></i>{{ t.fill }}</span>
+    <span class="opt" :class="{ on: tool === 'x' }"><i class="swatch x"></i>{{ t.mark }}</span>
+  </button>
+
+  <dialog class="modal" x-ref="modal" @click.self="$el.close()">
+    <div class="modal-body" tabindex="-1" autofocus>
+      <h2 x-text="won ? {{ t.solved_title|js }} : {{ t.out_of_lives|js }}"></h2>
+      <p class="sub" x-text="`Nono #${number} · ${label} ${size}×${size}`"></p>
+      <div class="preview" style="--n: {{ p.size }}" :class="{ lost }" aria-hidden="true">
+        {%- for v in p.solution %}<i{% if v == '1' %} class="on"{% endif %}></i>{% endfor -%}
+      </div>
+      <p class="lives big" :aria-label="livesLabel">
+        <template x-for="n in maxLives"><span :class="{ lost: n > lives }">♥</span></template>
+      </p>
+      <p class="next" x-show="isToday">{{ t.next_puzzle }} <strong x-text="countdown"></strong></p>
+      <div class="actions">
+        <button class="primary" @click="share()" x-text="copied ? {{ t.copied|js }} : {{ t.share|js }}"></button>
+        <button data-cuelume-press @click="$refs.modal.close(); navigate('/calendar')">{{ t.past_puzzles }}</button>
+      </div>
+    </div>
+  </dialog>
+</section>

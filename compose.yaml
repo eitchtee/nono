@@ -1,0 +1,21 @@
+services:
+  nono:
+    build: .
+    image: nono:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Addresses allowed to send X-Forwarded-* headers. Set this to your reverse proxy's IP
+      # (or "*" if only the proxy can reach the container) when serving over HTTPS.
+      FORWARDED_ALLOW_IPS: "127.0.0.1"
+    restart: unless-stopped
+    # Nothing is written to disk: game state lives in the players' browsers.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    pids_limit: 128

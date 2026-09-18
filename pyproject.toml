@@ -1,0 +1,19 @@
+[project]
+name = "nono"
+version = "0.1.0"
+description = "Daily nonograms"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "jinja2>=3.1",
+    # Not uvicorn[standard]: it adds uvloop (~16 MB, only pays off at high concurrency), watchfiles,
+    # websockets, dotenv and PyYAML. httptools is the one extra worth keeping: a small, faster HTTP parser.
+    "uvicorn>=0.30",
+    "httptools>=0.6",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27", "watchfiles>=0.21"]  # watchfiles powers --reload
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
