@@ -2,6 +2,7 @@ services:
   nono:
     build: .
     image: nono:latest
+    container_name: nono
     ports:
       - "8000:8000"
     environment:
