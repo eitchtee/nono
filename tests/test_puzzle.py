@@ -4,7 +4,8 @@ from fastapi.testclient import TestClient
 
 from app.i18n import from_accept_language
 from app.main import app
-from app.puzzle import DIFFICULTIES, clues, daily, line_solvable
+from app import store
+from app.puzzle import DIFFICULTIES, Puzzle, clues, daily, line_solvable
 
 
 def test_clues():
@@ -79,3 +80,20 @@ def test_language_choice():
     assert "How to play" in client.get("/", headers={"Accept-Language": "pt-BR"}).text
     client.cookies.set("nono_lang", "xx")  # unknown values fall back to detection
     assert "Como jogar" in client.get("/", headers={"Accept-Language": "pt-BR"}).text
+
+
+def test_first_generation_is_stored_and_kept(monkeypatch):
+    first = store.puzzle_for("2026-09-18")
+    assert first == daily("2026-09-18")
+
+    # Simulate a future generator change: a stored day must not change.
+    monkeypatch.setattr(store, "daily", lambda date: Puzzle.from_grid("easy", ((1, 0), (0, 1))))
+    store.puzzle_for.cache_clear()
+    assert store.puzzle_for("2026-09-18") == first
+    # ...while a day that was never requested uses the new generator.
+    assert store.puzzle_for("2026-09-17").size == 2
+
+
+def test_solution_round_trip():
+    p = daily("2026-09-18")
+    assert Puzzle.from_solution(p.difficulty, p.size, p.solution) == p

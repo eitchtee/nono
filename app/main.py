@@ -10,7 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import i18n
-from .puzzle import DIFFICULTIES, daily
+from .puzzle import DIFFICULTIES
+from .store import puzzle_for
 
 BASE = Path(__file__).parent
 MAX_LIVES = 3
@@ -79,7 +80,7 @@ def favicon():
 @app.get("/board")
 def board(request: Request, date: str):
     date = puzzle_date(date)
-    p = daily(date.isoformat())
+    p = puzzle_for(date.isoformat())
     cfg = {
         "date": date.isoformat(),
         "number": (date - LAUNCH).days + 1,

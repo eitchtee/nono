@@ -32,6 +32,16 @@ class Puzzle:
     def solution(self) -> str:
         return "".join(str(v) for row in self.grid for v in row)
 
+    @classmethod
+    def from_grid(cls, difficulty: str, grid) -> "Puzzle":
+        return cls(difficulty, len(grid), grid, [clues(r) for r in grid], [clues(c) for c in zip(*grid)])
+
+    @classmethod
+    def from_solution(cls, difficulty: str, size: int, solution: str) -> "Puzzle":
+        """Inverse of .solution, used when loading a stored puzzle."""
+        cells = [int(ch) for ch in solution]
+        return cls.from_grid(difficulty, tuple(tuple(cells[r * size : (r + 1) * size]) for r in range(size)))
+
 
 def clues(line) -> list[int]:
     runs, n = [], 0
@@ -111,4 +121,4 @@ def daily(date: str) -> Puzzle:
     while True:
         grid = tuple(tuple(int(rng.random() < density) for _ in range(size)) for _ in range(size))
         if line_solvable(grid):
-            return Puzzle(difficulty, size, grid, [clues(r) for r in grid], [clues(c) for c in zip(*grid)])
+            return Puzzle.from_grid(difficulty, grid)
