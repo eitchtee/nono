@@ -61,6 +61,13 @@ if ("serviceWorker" in navigator) {
   addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
 }
 
+// Phone/tablet vs desktop, by operating system rather than pointer type: stylus phones such as
+// Samsung's S Pen models report a fine, hovering pointer, just like a mouse.
+const isMobileOS = () =>
+  navigator.userAgentData?.mobile ||
+  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); // iPadOS identifies as a Mac
+
 // Cuelume loads as an ES module and sets window.cuelume; until then this is a no-op.
 const sfx = (name, volume = 1) => window.cuelume?.play(name, { volume });
 
@@ -263,10 +270,9 @@ document.addEventListener("alpine:init", () => {
     async share() {
       const hearts = "❤️".repeat(this.lives) + "🖤".repeat(this.maxLives - this.lives);
       const text = `Nono #${this.number} · ${this.label} ${this.size}×${this.size}\n${this.won ? "✅" : "❌"} ${hearts}\n${location.origin}/${this.date}`;
-      // Like term.ooo: native share sheet on phones, clipboard on desktop
+      // Like term.ooo: native share sheet on phones and tablets, clipboard on desktop
       // (desktop browsers also have navigator.share, but it opens the OS share dialog).
-      const mobile = matchMedia("(hover: none) and (pointer: coarse)").matches;
-      if (mobile && navigator.share) {
+      if (isMobileOS() && navigator.share) {
         try {
           return await navigator.share({ text });
         } catch (err) {
