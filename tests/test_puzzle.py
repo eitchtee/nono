@@ -1,5 +1,6 @@
 from collections import Counter
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.i18n import from_accept_language
@@ -97,3 +98,13 @@ def test_first_generation_is_stored_and_kept(monkeypatch):
 def test_solution_round_trip():
     p = daily("2026-09-18")
     assert Puzzle.from_solution(p.difficulty, p.size, p.solution) == p
+
+
+def test_unwritable_database_fails_at_startup(monkeypatch, tmp_path):
+    # A path whose parent is a file can never be created, like an unwritable mount.
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("")
+    monkeypatch.setattr(store, "DB_PATH", blocker / "nono.db")
+    with pytest.raises(RuntimeError, match="Can't write the puzzle database"):
+        with TestClient(app):
+            pass

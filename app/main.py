@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from markupsafe import Markup, escape
@@ -9,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import i18n
+from . import i18n, store
 from .puzzle import DIFFICULTIES
 from .store import puzzle_for
 
@@ -17,7 +18,14 @@ BASE = Path(__file__).parent
 MAX_LIVES = 3
 LAUNCH = dt.date(2026, 9, 1)  # puzzle #1; the calendar starts here
 
-app = FastAPI(title="Nono")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    store.check_writable()  # refuse to start if the puzzle database can't be written
+    yield
+
+
+app = FastAPI(title="Nono", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
 # A string as a JS literal inside a double-quoted HTML attribute, e.g. :aria-label="on ? {{ t.mute|js }} : ...".

@@ -40,7 +40,7 @@ cp compose.example.yaml compose.yaml
 docker compose up -d --build
 ```
 
-The container runs as a non-root user on a read-only filesystem, with all Linux capabilities dropped. Its only writable path is the `nono-data` volume, which holds the puzzle database: keep it across upgrades. It serves plain HTTP on port 8000, so put it behind a reverse proxy for HTTPS (needed to install the PWA), and set `FORWARDED_ALLOW_IPS` in `compose.yaml` to the proxy's address.
+The container runs as a non-root user on a read-only filesystem, with all Linux capabilities dropped. Its only writable path is the `nono-data` volume, which holds the puzzle database: keep it across upgrades. If you mount a host directory there instead, make it writable by the app's user first (`sudo chown -R 10001:10001 <dir>`); otherwise the container refuses to start and says so in its logs. It serves plain HTTP on port 8000, so put it behind a reverse proxy for HTTPS (needed to install the PWA), and set `FORWARDED_ALLOW_IPS` in `compose.yaml` to the proxy's address.
 
 Locally the database is `./data/nono.db`; set `NONO_DB` to put it elsewhere.
 

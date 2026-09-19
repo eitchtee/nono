@@ -35,6 +35,22 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def check_writable() -> None:
+    """Called at startup: fail right away with the fix in the message, rather than start
+    healthy and then return a 500 for every day that isn't stored yet."""
+    try:
+        with _connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")  # takes the write lock, so it needs write access
+            conn.rollback()
+    except (OSError, sqlite3.OperationalError) as e:
+        uid = os.getuid() if hasattr(os, "getuid") else "?"
+        raise RuntimeError(
+            f"Can't write the puzzle database at {DB_PATH} ({e}). Its directory must be writable by "
+            f"the user running the app (uid {uid}). With a bind mount, run on the host: "
+            f"sudo chown -R {uid}:{uid} <the mounted directory>"
+        ) from None
+
+
 @lru_cache(maxsize=128)
 def puzzle_for(date: str) -> Puzzle:
     """The day's puzzle: the stored one if it exists, otherwise generated and stored now."""
