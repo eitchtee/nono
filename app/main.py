@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import datetime as dt
+import hashlib
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -34,6 +35,27 @@ app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
 # A string as a JS literal inside a double-quoted HTML attribute, e.g. :aria-label="on ? {{ t.mute|js }} : ...".
 templates.env.filters["js"] = lambda value: Markup(escape(json.dumps(value)))
+
+
+def _versioned(name: str) -> str:
+    """/static/<name>?v=<content hash>. Any change to the file changes its URL, so CDNs,
+    browsers and the service worker fetch it fresh right after a deploy."""
+    digest = hashlib.sha256((BASE / "static" / name).read_bytes()).hexdigest()[:10]
+    return f"/static/{name}?v={digest}"
+
+
+# Hashed once at startup: the files only change with a new deploy.
+templates.env.globals["asset"] = {name: _versioned(name) for name in ("app.js", "style.css")}
+
+
+@app.middleware("http")
+async def static_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/") and response.status_code == 200:
+        # Versioned URLs never change content; anything else must be revalidated every time.
+        versioned = "v" in request.query_params
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable" if versioned else "no-cache"
+    return response
 
 
 def render(request: Request, name: str, context: dict):

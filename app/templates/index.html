@@ -17,11 +17,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- text= limits the download to the logo's letters -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@700&text=NONO&display=block">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="{{ asset['style.css'] }}">
   <!-- Strings app.js builds at runtime (titles, share text, calendar labels). -->
   <script>window.I18N = {{ t | tojson }};</script>
   <script defer src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
-  <script defer src="/static/app.js"></script>
+  <script defer src="{{ asset['app.js'] }}"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <script type="module">
     import * as cuelume from "https://cdn.jsdelivr.net/npm/cuelume@0.2.2/+esm";

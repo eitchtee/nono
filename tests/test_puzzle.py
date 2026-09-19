@@ -158,3 +158,13 @@ def test_scheduler_stores_upcoming_days():
     schedule.ensure(dt.datetime(2026, 9, 19, 9, 0, tzinfo=dt.UTC))
     assert not store.store_if_missing("2026-09-20")  # already there
     assert store.store_if_missing("2026-09-10")  # never requested, so generated now
+
+
+def test_static_files_are_versioned_so_deploys_reach_players():
+    client = TestClient(app)
+    page = client.get("/").text
+    for name in ("app.js", "style.css"):
+        url = page.split(f'/static/{name}?v=')[1].split('"')[0]
+        versioned = client.get(f"/static/{name}?v={url}")
+        assert versioned.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert client.get("/static/app.js").headers["cache-control"] == "no-cache"
