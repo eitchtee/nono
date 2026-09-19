@@ -23,8 +23,25 @@ def test_daily_is_deterministic_and_solvable():
 
 
 def test_difficulty_varies_by_day():
-    seen = Counter(daily(f"2026-10-{d:02d}").difficulty for d in range(1, 32))
-    assert set(seen) == set(DIFFICULTIES)
+    before = Counter(daily(f"2026-09-{d:02d}").difficulty for d in range(1, 19))
+    assert set(before) == {"easy", "medium", "hard"}
+    after = Counter(daily(f"2026-10-{d:02d}").difficulty for d in range(1, 32))
+    assert set(after) == {"easy", "medium"}  # 15x15 isn't picked from 2026-09-19 on
+
+
+def test_rule_changes_keep_older_days():
+    # Pinned before 15x15 was dropped; these days must never change.
+    assert (daily("2026-09-18").difficulty, daily("2026-09-18").solution[:15]) == ("hard", "111010111010000")
+    assert (daily("2026-09-03").difficulty, daily("2026-09-03").solution) == ("easy", "1001011000000001010011011")
+
+
+def test_lives_depend_on_size():
+    client = TestClient(app)
+    lives = {}
+    for day in ["2026-09-03", "2026-09-01", "2026-09-18"]:  # easy, medium, hard
+        text = client.get("/board", params={"date": day}).text
+        lives[daily(day).difficulty] = int(text.split('"maxLives": ')[1].split(",")[0].split("}")[0])
+    assert lives == {"easy": 3, "medium": 5, "hard": 5}
 
 
 def test_line_solver_rejects_ambiguous_grid():

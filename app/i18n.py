@@ -25,7 +25,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "step_controls": "Tap a square to fill it. Switch to <b>Mark</b>, or right-click, to cross out squares you know "
         "are empty. Drag to paint a whole line at once.",
         "step_lives": 'Every move is checked. A wrong one costs a <span class="heart">♥</span> and shows the real square. '
-        "Lose all three and the puzzle is over.",
+        "You get 3 for a 5×5 puzzle and 5 for a 10×10. Lose them all and the puzzle is over.",
         "step_fills": "Only the filled squares count: crosses just help you think. Clue numbers fade once they're done.",
         "step_daily": "There's a new puzzle every day. Finish it to unlock the ones you missed.",
         "lets_play": "Let's play",
@@ -62,7 +62,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "step_controls": "Toque em um quadrado para pintá-lo. Mude para <b>Marcar</b>, ou use o botão direito, para "
         "riscar quadrados que você sabe que estão vazios. Arraste para pintar uma linha inteira de uma vez.",
         "step_lives": 'Toda jogada é conferida. Um erro custa um <span class="heart">♥</span> e revela o quadrado certo. '
-        "Perdeu os três, acabou o desafio.",
+        "São 3 vidas no 5×5 e 5 no 10×10. Perdeu todas, acabou o desafio.",
         "step_fills": "Só os quadrados pintados contam: os X só ajudam a pensar. "
         "Os números das dicas se apagam quando concluídos.",
         "step_daily": "Todo dia tem um desafio novo. Termine o de hoje para liberar os que você perdeu.",

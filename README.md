@@ -2,11 +2,11 @@
 
 A new nonogram every day, in the spirit of [Termo](https://term.ooo).
 
-Fill the grid using the row and column clues. Every move is checked on the spot: a wrong one costs one of your three lives and reveals the real square. Everyone gets the same puzzle each day, and finishing it unlocks the days you missed.
+Fill the grid using the row and column clues. Every move is checked on the spot: a wrong one costs a life (3 on a 5×5, 5 on a 10×10) and reveals the real square. Everyone gets the same puzzle each day, and finishing it unlocks the days you missed.
 
 ## Features
 
-- **One daily puzzle** (#1 is 2026-09-01). The date seeds both the difficulty (5×5, 10×10 or 15×15) and the grid, and every grid is checked to be solvable line by line, so it never needs guessing.
+- **One daily puzzle** (#1 is 2026-09-01). The date seeds both the size (5×5 or 10×10) and the grid, and every grid is checked to be solvable line by line, so it never needs guessing. The rules for picking a size are dated (`RULES` in `app/puzzle.py`), so changing them never alters an earlier day; days before 2026-09-19 could also be 15×15.
 - **Past puzzles** in a calendar at `/calendar`, and every day has its own URL (`/2026-09-17`).
 - **No accounts.** Progress lives in the browser's `localStorage`. The server only keeps each day's puzzle in SQLite, stored the first time the day is served, so changes to the generator never alter a day someone already played.
 - **Mouse, touch and pen.** Drag to paint a line; right-click marks an X.

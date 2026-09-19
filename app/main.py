@@ -15,7 +15,6 @@ from .puzzle import DIFFICULTIES
 from .store import puzzle_for
 
 BASE = Path(__file__).parent
-MAX_LIVES = 3
 LAUNCH = dt.date(2026, 9, 1)  # puzzle #1; the calendar starts here
 
 
@@ -97,7 +96,7 @@ def board(request: Request, date: str):
         "solution": p.solution,
         "rows": p.rows,
         "cols": p.cols,
-        "maxLives": MAX_LIVES,
+        "maxLives": DIFFICULTIES[p.difficulty][2],
     }
     return render(request, "board.html", {"p": p, "cfg": cfg, "row_clue_len": max(len(r) for r in p.rows)})
 

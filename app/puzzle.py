@@ -10,12 +10,26 @@ import random
 from dataclasses import dataclass
 from functools import lru_cache
 
-# difficulty -> (size, fill density, relative weight when picking the day's difficulty)
+# difficulty -> (size, fill density, lives)
 DIFFICULTIES = {
     "easy": (5, 0.6, 3),
-    "medium": (10, 0.58, 4),
-    "hard": (15, 0.55, 3),
+    "medium": (10, 0.58, 5),
+    "hard": (15, 0.55, 5),  # no longer picked for new days, but kept so old 15x15 days still load
 }
+
+# Which difficulties a day can get, with their relative odds. Each rule applies from its date
+# onwards, so days generated under older rules keep exactly the same puzzle (the store also
+# pins every day once served, but days nobody has opened yet only have the generator).
+# Order matters: rng.choices draws from the dict in this order.
+RULES = [
+    ("2026-09-01", {"easy": 3, "medium": 4, "hard": 3}),
+    ("2026-09-19", {"easy": 3, "medium": 4}),  # 15x15 dropped: too small to tap on phones
+]
+
+
+def odds_for(date: str) -> dict[str, int]:
+    return next(odds for start, odds in reversed(RULES) if date >= start)
+
 
 Line = list[int | None]  # 1 filled, 0 empty, None unknown
 
@@ -116,7 +130,8 @@ def line_solvable(grid) -> bool:
 @lru_cache(maxsize=128)
 def daily(date: str) -> Puzzle:
     rng = random.Random(hashlib.sha256(f"nono:{date}".encode()).digest())
-    difficulty = rng.choices(list(DIFFICULTIES), weights=[w for *_, w in DIFFICULTIES.values()])[0]
+    odds = odds_for(date)
+    difficulty = rng.choices(list(odds), weights=list(odds.values()))[0]
     size, density, _ = DIFFICULTIES[difficulty]
     while True:
         grid = tuple(tuple(int(rng.random() < density) for _ in range(size)) for _ in range(size))
