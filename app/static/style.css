@@ -67,10 +67,32 @@ body {
 /* gap, not letter-spacing, so the last heart sits flush with the grid's right edge */
 .lives { display: inline-flex; gap: 3px; color: var(--accent); font-size: 20px; line-height: 1; }
 .lives .lost { color: var(--line); }
+/* Progress, clock and lives: the clock stays centred under the grid whatever the sides' widths. */
+.puzzle-bar.bottom { display: grid; grid-template-columns: 1fr auto 1fr; }
+.puzzle-bar.bottom .lives { justify-self: end; }
+.timer { color: var(--ink); font-weight: 600; font-size: 15px; }
+
+/* Covers the whole grid, clues included, while the clock is stopped. */
+.paused {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 600;
+}
+.paused svg { width: 28px; height: 28px; fill: currentColor; }
 
 /* Cells are as big as the screen allows: whichever runs out first, the width (n cells plus the
    row clues) or the height (n cells plus the column clues, below the rest of the page). */
 .grid {
+  position: relative;
   --by-width: calc((min(100vw, 760px) - 2 * var(--side) - 8px) / (var(--n) + var(--rc) * 0.46));
   --by-height: calc((100dvh - var(--chrome) - 8px) / (var(--n) + var(--cc) * 0.52));
   --cell: clamp(18px, min(var(--by-width), var(--by-height)), 64px);

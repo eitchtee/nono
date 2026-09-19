@@ -1,5 +1,6 @@
 <section class="board" x-data='nono({{ cfg | tojson }})'
-  @pointermove.window="move($event)" @pointerup.window="up()" @pointercancel.window="up()">
+  @pointermove.window="move($event)" @pointerup.window="up()" @pointercancel.window="up()"
+  @blur.window="tick()" @focus.window="tick()" @visibilitychange.document="tick()" @pagehide.window="saveTime()">
 
   <!-- The labels sit in the corners of the puzzle block, so they line up with its edges. -->
   <div class="puzzle">
@@ -25,10 +26,16 @@
       data-i="{{ i }}" :class="cls({{ i }})"></div>
       {% endfor %}
     {% endfor %}
+    <!-- Hides the clues while the clock is stopped, so pausing never buys thinking time. -->
+    <div class="paused" x-show="paused" x-cloak x-transition.opacity.duration.150ms>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/></svg>
+      {{ t.paused }}
+    </div>
   </div>
 
-  <div class="puzzle-bar">
+  <div class="puzzle-bar bottom">
     <span class="progress" x-text="`${filled} / ${total}`"></span>
+    <span class="timer" role="timer" aria-label="{{ t.time }}" x-show="timed" x-text="clockText"></span>
     <span class="lives" :aria-label="livesLabel">
       <template x-for="n in maxLives"><span :class="{ lost: n > lives }">♥</span></template>
     </span>

@@ -52,6 +52,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "streak_other": "{n}-day streak",
         "keep_streak": "Solve today's puzzle to keep it going",
         "share_streak": "🔥 {n} days",
+        "beat_it": "Can you do better?",
+        "time": "Time",
+        "paused": "Paused",
     },
     "pt-BR": {
         "description": "Um nonograma novo todo dia.",
@@ -94,6 +97,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "streak_other": "Sequência de {n} dias",
         "keep_streak": "Resolva o desafio de hoje para mantê-la",
         "share_streak": "🔥 {n} dias",
+        "beat_it": "Consegue fazer melhor?",
+        "time": "Tempo",
+        "paused": "Pausado",
     },
 }
 

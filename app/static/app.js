@@ -100,6 +100,13 @@ function readStreak() {
   return { n, today };
 }
 const refreshStreak = () => Alpine.store("streak", readStreak());
+// 4:07, or 1:04:07 past an hour.
+function formatTime(ms) {
+  const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  const pad = (v) => String(v).padStart(2, "0");
+  return h ? `${h}:${pad(m)}:${pad(s % 60)}` : `${m}:${pad(s % 60)}`;
+}
+
 function streakTitle() {
   const { n, today } = Alpine.store("streak");
   const label = t(n === 1 ? "streak_one" : "streak_other", { n });
@@ -134,6 +141,10 @@ document.addEventListener("alpine:init", () => {
     errors: [],
     lives: cfg.maxLives,
     finishedOn: undefined, // the local date the game ended on, for streaks
+    elapsed: 0, // ms spent on the board, see tick()
+    timed: true,
+    away: false,
+    lastTick: 0,
     locks: { rows: [], cols: [] },
     tool: "fill",
     drag: null,
@@ -154,9 +165,13 @@ document.addEventListener("alpine:init", () => {
       this.errors = saved?.errors ?? [];
       this.lives = saved?.lives ?? this.maxLives;
       this.finishedOn = saved?.finishedOn;
+      // Games saved before the timer existed stay untimed rather than show a partial time.
+      this.timed = !saved || saved.time !== undefined;
+      this.elapsed = saved?.time ?? 0;
       if (saved && saved.fp !== this.fp) this.save(); // a valid save from an older app.js: stamp it
       this.updateLocks();
-      this.clock = setInterval(() => (this.now = Date.now()), 1000);
+      this.lastTick = performance.now();
+      this.clock = setInterval(() => this.tick(), 250);
       // A finished game (reload, or reopened from the calendar) shows its result right away;
       // one that ends during play pops it after a beat so the last move can land.
       if (this.over) this.$nextTick(() => this.showResult());
@@ -175,14 +190,40 @@ document.addEventListener("alpine:init", () => {
     save() {
       const status = this.won ? "won" : this.lost ? "lost" : "playing";
       const { fp, cells, errors, lives, finishedOn } = this;
-      store(this.key, { fp, status, cells, errors, lives, finishedOn });
+      const time = this.timed ? Math.round(this.elapsed) : undefined;
+      store(this.key, { fp, status, cells, errors, lives, finishedOn, time });
       this.$dispatch("nono-update");
     },
 
     savedGameFits(saved) {
-      const { lives = this.maxLives } = saved;
-      return saveMatches(saved, this) && Number.isInteger(lives) && lives >= 0 && lives <= this.maxLives;
+      const { lives = this.maxLives, time = 0 } = saved;
+      return saveMatches(saved, this) && Number.isInteger(lives) && lives >= 0 && lives <= this.maxLives &&
+        Number.isFinite(time) && time >= 0;
     },
+
+    // The clock runs from the moment the board is on screen, and stops while the page is hidden,
+    // out of focus, showing the calendar or the how-to-play dialog; the board is covered meanwhile
+    // (see .paused), so stepping away never buys thinking time. Time is added up from the real gaps
+    // between ticks, since background tabs throttle timers, and a gap of more than a few seconds
+    // means the device slept or froze the page, so it doesn't count.
+    tick() {
+      const now = performance.now(), gap = now - this.lastTick;
+      this.lastTick = now;
+      this.now = Date.now();
+      if (this.timed && !this.over && !this.away && gap < 3000) this.elapsed += gap;
+      const away = document.hidden || !document.hasFocus() || Alpine.store("view") !== "board" ||
+        Boolean(document.querySelector("dialog.help[open]"));
+      if (away && !this.away) this.saveTime();
+      this.away = away;
+    },
+
+    // Keeps the time across reloads, even before the first move: the clock started when the board did.
+    saveTime() {
+      if (this.timed && !this.over && this.elapsed > 0) this.save();
+    },
+
+    get paused() { return this.timed && !this.over && this.away },
+    get clockText() { return formatTime(this.elapsed) },
 
     get filled() { return this.cells.filter((v) => v === FILL).length },
     get lost() { return this.lives <= 0 },
@@ -271,6 +312,7 @@ document.addEventListener("alpine:init", () => {
     // Every mark is checked. A wrong one reveals the real tile, costs a life and ends the drag.
     apply(i) {
       if (this.cells[i] !== EMPTY) return;
+      this.tick(); // count up to this move, so a winning move stops the clock at the right time
       const truth = this.solution[i] === "1" ? FILL : X;
       const wrong = (this.drag.mode === "fill" ? FILL : X) !== truth;
       this.cells[i] = truth;
@@ -324,9 +366,12 @@ document.addEventListener("alpine:init", () => {
       const { n } = this.$store.streak;
       const streak = this.isToday && n >= 2 ? `\n${t("share_streak", { n })}` : "";
       const flawless = this.won && !this.errors.length ? `\n✨ ${t("flawless")}` : "";
+      // Only a win has a time worth comparing.
+      const time = this.won && this.timed ? ` ⏱️ ${this.clockText}` : "";
       // Today's puzzle is whatever the home page shows; older ones go by number (/19 redirects to its date).
       const link = this.isToday ? location.origin : `${location.origin}/${this.number}`;
-      return `Nono #${this.number} · ${this.label} ${this.size}×${this.size}\n${hearts}${flawless}\n\n${this.mistakeMap}\n${streak}\n${link}`;
+      return `Nono #${this.number} · ${this.label} ${this.size}×${this.size}\n${hearts}${time}${flawless}\n\n` +
+        `${this.mistakeMap}\n${streak}\n${t("beat_it")}\n${link}`;
     },
 
     async share() {
