@@ -11,7 +11,7 @@ import sqlite3
 from functools import lru_cache
 from pathlib import Path
 
-from .puzzle import Puzzle, daily
+from .puzzle import Puzzle, daily, fingerprint
 
 # Docker sets NONO_DB to a path on a volume; locally it lives in ./data (gitignored).
 DB_PATH = Path(os.environ.get("NONO_DB", Path(__file__).parent.parent / "data" / "nono.db"))
@@ -73,3 +73,14 @@ def puzzle_for(date: str) -> Puzzle:
     with _connect() as conn:
         row = conn.execute("SELECT difficulty, size, solution FROM puzzles WHERE date = ?", (date,)).fetchone()
     return Puzzle.from_solution(*row)
+
+
+def fingerprints(dates: list[str]) -> dict[str, str]:
+    """Puzzle fingerprint for each date, generating and storing any day that isn't stored yet."""
+    for date in dates:
+        store_if_missing(date)
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT date, solution FROM puzzles WHERE date BETWEEN ? AND ?", (min(dates), max(dates))
+        ).fetchall()
+    return {date: fingerprint(solution) for date, solution in rows if date in set(dates)}

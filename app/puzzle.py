@@ -61,9 +61,7 @@ class Puzzle:
 
     @property
     def fingerprint(self) -> str:
-        """Short hash of the grid. Saved games carry it, so a day whose puzzle ever changes
-        (generator change, lost database) is detected and its stale save discarded."""
-        return hashlib.sha256(self.solution.encode()).hexdigest()[:16]
+        return fingerprint(self.solution)
 
     @classmethod
     def from_grid(cls, difficulty: str, grid) -> "Puzzle":
@@ -74,6 +72,12 @@ class Puzzle:
         """Inverse of .solution, used when loading a stored puzzle."""
         cells = [int(ch) for ch in solution]
         return cls.from_grid(difficulty, tuple(tuple(cells[r * size : (r + 1) * size]) for r in range(size)))
+
+
+def fingerprint(solution: str) -> str:
+    """Short hash of a grid. Saved games carry it, so a day whose puzzle ever changes
+    (generator change, lost database) is detected and its stale save discarded."""
+    return hashlib.sha256(solution.encode()).hexdigest()[:16]
 
 
 def clues(line) -> list[int]:

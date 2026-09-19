@@ -105,7 +105,6 @@ document.addEventListener("alpine:init", () => {
       this.cells = saved?.cells ?? Array(this.size * this.size).fill(EMPTY);
       this.errors = saved?.errors ?? [];
       this.lives = saved?.lives ?? this.maxLives;
-      if (saved && saved.fp !== this.fp) this.save(); // saves from before fingerprints: stamp them
       this.updateLocks();
       this.clock = setInterval(() => (this.now = Date.now()), 1000);
       // A finished game (reload, or reopened from the calendar) shows its result right away;
@@ -129,11 +128,11 @@ document.addEventListener("alpine:init", () => {
       this.$dispatch("nono-update");
     },
 
-    // Whether a saved game belongs to this puzzle. It doesn't if the puzzle's fingerprint changed,
-    // or if its marks contradict the board: every mark is checked against the solution when it's
-    // made, so a genuine save always agrees with it (saves from before fingerprints rely on this).
+    // Whether a saved game belongs to this puzzle: it must carry the puzzle's fingerprint, and its
+    // marks can't contradict the board (every mark is checked against the solution when it's made,
+    // so a genuine save always agrees with it).
     savedGameFits(saved) {
-      if (saved.fp !== undefined && saved.fp !== this.fp) return false;
+      if (saved.fp !== this.fp) return false;
       const { cells, errors = [], lives = this.maxLives } = saved;
       if (!Array.isArray(cells) || cells.length !== this.size * this.size) return false;
       const marksAgree = cells.every((v, i) =>
@@ -354,9 +353,31 @@ document.addEventListener("alpine:init", () => {
       const t = parseISO(this.today);
       this.month = new Date(t.getFullYear(), t.getMonth(), 1);
       this.refresh();
+      this.pruneStaleSaves();
     },
 
     refresh() { this.version++ },
+
+    // Runs on every page load: drop saved games whose puzzle has changed (new generator, fresh
+    // database), so the calendar never shows a result that doesn't belong to the current board.
+    async pruneStaleSaves() {
+      let days;
+      try {
+        days = (await (await fetch("/api/days")).json()).days;
+      } catch {
+        return; // offline: nothing to compare against, try again next load
+      }
+      let keys = [];
+      try { keys = Object.keys(localStorage) } catch {}
+      for (const key of keys) {
+        const date = key.match(/^nono:(\d{4}-\d{2}-\d{2})$/)?.[1];
+        if (!date) continue;
+        // Dates before launch never had a puzzle; open dates must match. Dates that haven't opened
+        // on the server yet (a device clock running ahead) are left alone.
+        if (date < this.launch || (date in days && load(key)?.fp !== days[date])) forget(key);
+      }
+      this.refresh();
+    },
 
     status(iso) {
       this.version;

@@ -9,7 +9,7 @@ from pathlib import Path
 from markupsafe import Markup, escape
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -129,6 +129,15 @@ def board(request: Request, date: str):
     # How many numbers the longest row / column clue has, so CSS can size the cells to fit.
     clue_lens = {"row_clue_len": max(len(r) for r in p.rows), "col_clue_len": max(len(c) for c in p.cols)}
     return render(request, "board.html", {"p": p, "cfg": cfg, **clue_lens})
+
+
+@app.get("/api/days")
+def days():
+    """Fingerprint of every day that can be played now. The client drops any saved game
+    whose fingerprint doesn't match, so the calendar never shows a stale result."""
+    last = schedule.latest_open_date(dt.datetime.now(dt.UTC))
+    dates = [(LAUNCH + dt.timedelta(days=k)).isoformat() for k in range((last - LAUNCH).days + 1)]
+    return JSONResponse({"days": store.fingerprints(dates)}, headers={"Cache-Control": "no-cache"})
 
 
 # Declared last so it doesn't shadow /board.

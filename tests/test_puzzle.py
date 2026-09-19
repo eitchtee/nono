@@ -160,6 +160,16 @@ def test_scheduler_stores_upcoming_days():
     assert store.store_if_missing("2026-09-10")  # never requested, so generated now
 
 
+def test_days_lists_every_open_day_with_its_fingerprint():
+    res = TestClient(app).get("/api/days")
+    days = res.json()["days"]
+    last = schedule.latest_open_date(dt.datetime.now(dt.UTC))
+    assert min(days) == LAUNCH.isoformat() and max(days) == last.isoformat()
+    assert len(days) == (last - LAUNCH).days + 1
+    assert days["2026-09-03"] == daily("2026-09-03").fingerprint
+    assert res.headers["cache-control"] == "no-cache"
+
+
 def test_static_files_are_versioned_so_deploys_reach_players():
     client = TestClient(app)
     page = client.get("/").text
