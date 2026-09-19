@@ -8,7 +8,8 @@ Fill the grid using the row and column clues. Every move is checked on the spot:
 
 - **One daily puzzle** (#1 is 2026-09-01). The date seeds a size (5×5 or 10×10) and a difficulty (easy, medium, or hard on 10×10), and grids are generated until one actually measures at that difficulty: how much the clues give away before you combine rows and columns, and how many passes a line solver needs. Every grid is solvable line by line, so it never needs guessing. The rules are dated in `app/puzzle.py`, so changing them never alters an earlier day; days before 2026-09-20 used older rules and could also be 15×15.
 - **Past puzzles** in a calendar at `/calendar`, and every day has its own URL (`/2026-09-17`).
-- **No accounts.** Progress lives in the browser's `localStorage`, tagged with a fingerprint of its puzzle so a save that no longer matches is discarded. The server only keeps each day's puzzle in SQLite, stored the first time the day is served, so changes to the generator never alter a day someone already played.
+- **Timezone-aware.** Players get their own local date. Each puzzle is generated an hour before its date begins anywhere (09:00 UTC the day before, for UTC+14), and a date can't be opened until it has started somewhere.
+- **No accounts.** Progress lives in the browser's `localStorage`, tagged with a fingerprint of its puzzle so a save that no longer matches is discarded. The server only keeps each day's puzzle in SQLite, so changes to the generator never alter a day that's already stored.
 - **Mouse, touch and pen.** Drag to paint a line; right-click marks an X.
 - **English and Brazilian Portuguese**, picked from the browser's language until the player chooses one.
 - **Installable PWA** that works offline for days you've already opened.
@@ -51,6 +52,7 @@ app/
   main.py       routes
   puzzle.py     daily puzzle generation and the line solver
   store.py      SQLite store that pins each day's puzzle once generated
+  schedule.py   when dates open, and the task that generates them ahead of time
   i18n.py       UI strings and language detection
   templates/    page shell and board
   static/       game logic (app.js), styles, service worker, icons

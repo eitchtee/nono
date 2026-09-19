@@ -4,7 +4,7 @@ from collections import Counter
 import pytest
 from fastapi.testclient import TestClient
 
-from app import store
+from app import schedule, store
 from app.i18n import from_accept_language
 from app.main import app
 from app.puzzle import LEGACY, TIERS, Puzzle, clues, daily, given_away, line_solvable, solve_passes
@@ -141,3 +141,25 @@ def test_board_sends_the_puzzle_fingerprint():
     assert p.fingerprint != daily("2026-09-04").fingerprint
     text = TestClient(app).get("/board", params={"date": "2026-09-03"}).text
     assert f'"fp": "{p.fingerprint}"' in text
+
+
+def test_dates_open_when_they_start_anywhere():
+    # 2026-09-20 starts first in UTC+14, at 10:00 UTC on the 19th.
+    assert schedule.latest_open_date(dt.datetime(2026, 9, 19, 9, 59, tzinfo=dt.UTC)) == dt.date(2026, 9, 19)
+    assert schedule.latest_open_date(dt.datetime(2026, 9, 19, 10, 0, tzinfo=dt.UTC)) == dt.date(2026, 9, 20)
+
+
+def test_puzzles_are_generated_an_hour_before_they_open():
+    at = lambda h, m: dt.datetime(2026, 9, 19, h, m, tzinfo=dt.UTC)
+    assert dt.date(2026, 9, 20) not in schedule.due_dates(at(8, 59))
+    assert dt.date(2026, 9, 20) in schedule.due_dates(at(9, 0))  # 1 hour before it opens
+    # Every date that is still today somewhere (down to UTC-12) stays covered.
+    assert schedule.due_dates(at(9, 0)) == [dt.date(2026, 9, 18), dt.date(2026, 9, 19), dt.date(2026, 9, 20)]
+    # The task wakes exactly at 09:00 UTC rather than up to a check interval late.
+    assert schedule._seconds_until_next_check(at(8, 58)) == 120.5
+
+
+def test_scheduler_stores_upcoming_days():
+    schedule.ensure(dt.datetime(2026, 9, 19, 9, 0, tzinfo=dt.UTC))
+    assert not store.store_if_missing("2026-09-20")  # already there
+    assert store.store_if_missing("2026-09-10")  # never requested, so generated now

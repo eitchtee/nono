@@ -51,17 +51,25 @@ def check_writable() -> None:
         ) from None
 
 
+def store_if_missing(date: str) -> bool:
+    """Generate and store the day's puzzle unless it's already stored. True if it was generated."""
+    with _connect() as conn:
+        if conn.execute("SELECT 1 FROM puzzles WHERE date = ?", (date,)).fetchone():
+            return False
+        p = daily(date)
+        # OR IGNORE: if another worker stored this day first, theirs is kept.
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO puzzles (date, difficulty, size, solution) VALUES (?, ?, ?, ?)",
+            (date, p.difficulty, p.size, p.solution),
+        )
+        return cur.rowcount == 1
+
+
 @lru_cache(maxsize=128)
 def puzzle_for(date: str) -> Puzzle:
-    """The day's puzzle: the stored one if it exists, otherwise generated and stored now."""
+    """The day's puzzle, as stored. Upcoming days are stored ahead of time by the scheduler;
+    older days nobody has opened yet are generated and stored on their first request."""
+    store_if_missing(date)
     with _connect() as conn:
         row = conn.execute("SELECT difficulty, size, solution FROM puzzles WHERE date = ?", (date,)).fetchone()
-        if row is None:
-            p = daily(date)
-            # OR IGNORE: if another worker stored this day first, keep theirs and read it back below.
-            conn.execute(
-                "INSERT OR IGNORE INTO puzzles (date, difficulty, size, solution) VALUES (?, ?, ?, ?)",
-                (date, p.difficulty, p.size, p.solution),
-            )
-            row = conn.execute("SELECT difficulty, size, solution FROM puzzles WHERE date = ?", (date,)).fetchone()
     return Puzzle.from_solution(*row)

@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import datetime as dt
 import json
 from contextlib import asynccontextmanager
@@ -10,7 +12,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import i18n, store
+from . import i18n, schedule, store
 from .puzzle import LAUNCH, LIVES
 from .store import puzzle_for
 
@@ -20,7 +22,11 @@ BASE = Path(__file__).parent
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     store.check_writable()  # refuse to start if the puzzle database can't be written
+    ahead = asyncio.create_task(schedule.keep_ahead())  # stores each day's puzzle before it starts
     yield
+    ahead.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await ahead
 
 
 app = FastAPI(title="Nono", lifespan=lifespan)
@@ -46,8 +52,8 @@ def puzzle_date(value: str) -> dt.date:
         raise HTTPException(404, "Not a day") from None
     if value != date.isoformat():  # fromisoformat also takes "20260917"; keep one URL per day
         raise HTTPException(404, "Not a day")
-    # The client picks "today" in its own timezone; allow one day ahead for zones east of UTC.
-    if not LAUNCH <= date <= dt.datetime.now(dt.UTC).date() + dt.timedelta(days=1):
+    # Players ask for their local date, so a date opens once it has started in any timezone.
+    if not LAUNCH <= date <= schedule.latest_open_date(dt.datetime.now(dt.UTC)):
         raise HTTPException(404, "No puzzle for that day")
     return date
 
