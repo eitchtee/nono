@@ -4,9 +4,9 @@ There is one puzzle per day. The date seeds everything, so everyone gets the sam
 and every grid is checked by a pure line-by-line solver, which guarantees a unique solution
 that never needs guessing.
 
-The rules have changed over time. Each rule set applies from its date onwards, so days made
-under older rules keep exactly the same puzzle (the store also pins every day once generated,
-but days nobody has opened yet only have the generator to go on).
+Each day draws a size and a difficulty tier, then grids are generated until one measures
+inside that tier: difficulty is measured, not assumed from the fill density. Changing these
+rules changes every day that isn't stored yet; the store pins each day once generated.
 """
 
 import datetime as dt
@@ -16,19 +16,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 LAUNCH = dt.date(2026, 9, 1)  # puzzle #1
-LIVES = {5: 3, 10: 5, 15: 5}  # by board size
-
-# --- Until 2026-09-19: the difficulty picked the size, and each size had a fixed fill density.
-LEGACY = {"easy": (5, 0.6), "medium": (10, 0.58), "hard": (15, 0.55)}
-# Order matters: rng.choices draws from each dict in this order.
-LEGACY_RULES = [
-    ("2026-09-01", {"easy": 3, "medium": 4, "hard": 3}),
-    ("2026-09-19", {"easy": 3, "medium": 4}),  # 15x15 dropped: too small to tap on phones
-]
-
-# --- From 2026-09-20: each day draws a size and a difficulty tier, then grids are generated
-# until one measures inside that tier. Difficulty is measured, not assumed from the density.
-TIERED_FROM = "2026-09-20"
+LIVES = {5: 3, 10: 5}  # by board size
 
 
 @dataclass(frozen=True)
@@ -178,21 +166,9 @@ def _random_grid(rng: random.Random, size: int, density: float):
     return tuple(tuple(int(rng.random() < density) for _ in range(size)) for _ in range(size))
 
 
-def _legacy(date: str, rng: random.Random) -> Puzzle:
-    odds = next(odds for start, odds in reversed(LEGACY_RULES) if date >= start)
-    difficulty = rng.choices(list(odds), weights=list(odds.values()))[0]
-    size, density = LEGACY[difficulty]
-    while True:
-        grid = _random_grid(rng, size, density)
-        if line_solvable(grid):
-            return Puzzle.from_grid(difficulty, grid)
-
-
 @lru_cache(maxsize=128)
 def daily(date: str) -> Puzzle:
     rng = random.Random(hashlib.sha256(f"nono:{date}".encode()).digest())
-    if date < TIERED_FROM:
-        return _legacy(date, rng)
     (size, difficulty), tier = rng.choices(list(TIERS.items()), weights=[t.weight for t in TIERS.values()])[0]
     while True:
         grid = _random_grid(rng, size, tier.density)

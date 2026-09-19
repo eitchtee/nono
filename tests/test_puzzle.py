@@ -7,7 +7,10 @@ from fastapi.testclient import TestClient
 from app import schedule, store
 from app.i18n import from_accept_language
 from app.main import app
-from app.puzzle import LEGACY, TIERS, Puzzle, clues, daily, given_away, line_solvable, solve_passes
+from app.puzzle import LAUNCH, TIERS, Puzzle, clues, daily, given_away, line_solvable, solve_passes
+
+# The first 120 days, as ISO dates.
+DAYS = [(LAUNCH + dt.timedelta(days=k)).isoformat() for k in range(120)]
 
 
 def test_clues():
@@ -18,38 +21,30 @@ def test_clues():
 def test_daily_is_deterministic_and_solvable():
     p = daily("2026-09-18")
     assert p == daily.__wrapped__("2026-09-18")
-    assert p.size == LEGACY[p.difficulty][0]
+    assert (p.size, p.difficulty) in TIERS
     assert line_solvable(p.grid)
     assert p != daily("2026-09-19")
 
 
 def test_difficulty_varies_by_day():
-    before = Counter(daily(f"2026-09-{d:02d}").difficulty for d in range(1, 19))
-    assert set(before) == {"easy", "medium", "hard"}
-    days = [(dt.date(2026, 9, 20) + dt.timedelta(days=k)).isoformat() for k in range(120)]
-    mix = Counter((daily(d).size, daily(d).difficulty) for d in days)
-    assert set(mix) == set(TIERS)  # every size/tier combination shows up; no 15x15, no hard 5x5
+    mix = Counter((daily(d).size, daily(d).difficulty) for d in DAYS)
+    assert set(mix) == set(TIERS)  # every size/tier combination shows up, and nothing else
 
 
-def test_tiered_days_measure_inside_their_tier():
-    for k in range(60):
-        p = daily((dt.date(2026, 9, 20) + dt.timedelta(days=k)).isoformat())
+def test_days_measure_inside_their_tier():
+    for d in DAYS[:60]:
+        p = daily(d)
         assert TIERS[(p.size, p.difficulty)].fits(given_away(p.grid), solve_passes(p.grid)), p
-
-
-def test_rule_changes_keep_older_days():
-    # Pinned before 15x15 was dropped; these days must never change.
-    assert (daily("2026-09-18").difficulty, daily("2026-09-18").solution[:15]) == ("hard", "111010111010000")
-    assert (daily("2026-09-03").difficulty, daily("2026-09-03").solution) == ("easy", "1001011000000001010011011")
 
 
 def test_lives_depend_on_size():
     client = TestClient(app)
     lives = {}
-    for day in ["2026-09-03", "2026-09-01", "2026-09-18"]:  # easy, medium, hard
+    for size in (5, 10):
+        day = next(d for d in DAYS if daily(d).size == size)
         text = client.get("/board", params={"date": day}).text
-        lives[daily(day).difficulty] = int(text.split('"maxLives": ')[1].split(",")[0].split("}")[0])
-    assert lives == {"easy": 3, "medium": 5, "hard": 5}
+        lives[size] = int(text.split('"maxLives": ')[1].split(",")[0].split("}")[0])
+    assert lives == {5: 3, 10: 5}
 
 
 def test_line_solver_rejects_ambiguous_grid():

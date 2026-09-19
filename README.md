@@ -6,7 +6,7 @@ Fill the grid using the row and column clues. Every move is checked on the spot:
 
 ## Features
 
-- **One daily puzzle** (#1 is 2026-09-01). The date seeds a size (5×5 or 10×10) and a difficulty (easy, medium, or hard on 10×10), and grids are generated until one actually measures at that difficulty: how much the clues give away before you combine rows and columns, and how many passes a line solver needs. Every grid is solvable line by line, so it never needs guessing. The rules are dated in `app/puzzle.py`, so changing them never alters an earlier day; days before 2026-09-20 used older rules and could also be 15×15.
+- **One daily puzzle** (#1 is 2026-09-01). The date seeds a size (5×5 or 10×10) and a difficulty (easy, medium, or hard on 10×10), and grids are generated until one actually measures at that difficulty: how much the clues give away before you combine rows and columns, and how many passes a line solver needs. Every grid is solvable line by line, so it never needs guessing. Changing the rules in `app/puzzle.py` changes every day that isn't stored in the database yet.
 - **Past puzzles** in a calendar at `/calendar`, and every day has its own URL (`/2026-09-17`).
 - **Timezone-aware.** Players get their own local date. Each puzzle is generated an hour before its date begins anywhere (09:00 UTC the day before, for UTC+14), and a date can't be opened until it has started somewhere.
 - **No accounts.** Progress lives in the browser's `localStorage`, tagged with a fingerprint of its puzzle so a save that no longer matches is discarded. The server only keeps each day's puzzle in SQLite, so changes to the generator never alter a day that's already stored.
