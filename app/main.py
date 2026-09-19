@@ -94,6 +94,7 @@ def board(request: Request, date: str):
         "label": i18n.STRINGS[i18n.pick(request)][p.difficulty],
         "size": p.size,
         "solution": p.solution,
+        "fp": p.fingerprint,
         "rows": p.rows,
         "cols": p.cols,
         "maxLives": DIFFICULTIES[p.difficulty][2],

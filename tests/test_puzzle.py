@@ -125,3 +125,11 @@ def test_unwritable_database_fails_at_startup(monkeypatch, tmp_path):
     with pytest.raises(RuntimeError, match="Can't write the puzzle database"):
         with TestClient(app):
             pass
+
+
+def test_board_sends_the_puzzle_fingerprint():
+    p = daily("2026-09-03")
+    assert len(p.fingerprint) == 16
+    assert p.fingerprint != daily("2026-09-04").fingerprint
+    text = TestClient(app).get("/board", params={"date": "2026-09-03"}).text
+    assert f'"fp": "{p.fingerprint}"' in text

@@ -2,6 +2,7 @@ const EMPTY = 0, FILL = 1, X = 2;
 
 const load = (key) => { try { return JSON.parse(localStorage.getItem(key)) } catch { return null } };
 const store = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)) } catch {} };
+const forget = (key) => { try { localStorage.removeItem(key) } catch {} };
 
 // Dates are local-time "YYYY-MM-DD" strings; parsing them with new Date(iso) would use UTC.
 const todayISO = () => new Date().toLocaleDateString("en-CA");
@@ -94,10 +95,17 @@ document.addEventListener("alpine:init", () => {
     init() {
       this.key = gameKey(this.date);
       this.total = [...this.solution].filter((c) => c === "1").length;
-      const saved = load(this.key);
+      let saved = load(this.key);
+      if (saved && !this.savedGameFits(saved)) {
+        // The day's puzzle changed since this was saved; start it over rather than show a broken board.
+        forget(this.key);
+        saved = null;
+        this.$dispatch("nono-update");
+      }
       this.cells = saved?.cells ?? Array(this.size * this.size).fill(EMPTY);
       this.errors = saved?.errors ?? [];
       this.lives = saved?.lives ?? this.maxLives;
+      if (saved && saved.fp !== this.fp) this.save(); // saves from before fingerprints: stamp them
       this.updateLocks();
       this.clock = setInterval(() => (this.now = Date.now()), 1000);
       // A finished game (reload, or reopened from the calendar) shows its result right away;
@@ -117,8 +125,22 @@ document.addEventListener("alpine:init", () => {
 
     save() {
       const status = this.won ? "won" : this.lost ? "lost" : "playing";
-      store(this.key, { status, cells: this.cells, errors: this.errors, lives: this.lives });
+      store(this.key, { fp: this.fp, status, cells: this.cells, errors: this.errors, lives: this.lives });
       this.$dispatch("nono-update");
+    },
+
+    // Whether a saved game belongs to this puzzle. It doesn't if the puzzle's fingerprint changed,
+    // or if its marks contradict the board: every mark is checked against the solution when it's
+    // made, so a genuine save always agrees with it (saves from before fingerprints rely on this).
+    savedGameFits(saved) {
+      if (saved.fp !== undefined && saved.fp !== this.fp) return false;
+      const { cells, errors = [], lives = this.maxLives } = saved;
+      if (!Array.isArray(cells) || cells.length !== this.size * this.size) return false;
+      const marksAgree = cells.every((v, i) =>
+        v === EMPTY || (v === FILL && this.solution[i] === "1") || (v === X && this.solution[i] === "0"));
+      const errorsValid = Array.isArray(errors) && errors.every((i) => Number.isInteger(i) && cells[i] !== EMPTY);
+      const livesValid = Number.isInteger(lives) && lives >= 0 && lives <= this.maxLives;
+      return marksAgree && errorsValid && livesValid;
     },
 
     get filled() { return this.cells.filter((v) => v === FILL).length },
