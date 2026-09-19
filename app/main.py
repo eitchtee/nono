@@ -9,7 +9,7 @@ from pathlib import Path
 from markupsafe import Markup, escape
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -145,6 +145,10 @@ def days():
 # Declared last so it doesn't shadow /board.
 @app.get("/{day}")
 def day_page(request: Request, day: str):
+    # Shared past puzzles link by number (/19), which is shorter than the date it stands for.
+    if day.isdigit() and not day.startswith("0") and len(day) <= 6:  # longer runs overflow the date
+        date = puzzle_date((LAUNCH + dt.timedelta(days=int(day) - 1)).isoformat())
+        return RedirectResponse(f"/{date.isoformat()}", status_code=301)  # a number's date never changes
     puzzle_date(day)
     return page(request)
 

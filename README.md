@@ -7,7 +7,9 @@ Fill the grid using the row and column clues. Every move is checked on the spot:
 ## Features
 
 - **One daily puzzle** (#1 is 2026-09-01). The date seeds a size (5×5 or 10×10) and a difficulty (easy, medium, or hard on 10×10), and grids are generated until one actually measures at that difficulty: how much the clues give away before you combine rows and columns, and how many passes a line solver needs. Every grid is solvable line by line, so it never needs guessing. Changing the rules in `app/puzzle.py` changes every day that isn't stored in the database yet.
-- **Past puzzles** in a calendar at `/calendar`, and every day has its own URL (`/2026-09-17`).
+- **Past puzzles** in a calendar at `/calendar`, and every day has its own URL (`/2026-09-17`, or `/17` by puzzle number).
+- **Share card** with lives, a spoiler-free map of where your mistakes were (10×10 boards fold into 5×5), and your streak. Today's puzzle links to the home page; older ones link by number.
+- **Streaks** of days solved in a row, shown in the top bar. Only a puzzle won on its own day counts, so catching up from the calendar doesn't build one.
 - **Timezone-aware.** Players get their own local date. Each puzzle is generated an hour before its date begins anywhere (09:00 UTC the day before, for UTC+14), and a date can't be opened until it has started somewhere.
 - **No accounts.** Progress lives in the browser's `localStorage`, tagged with a fingerprint of its puzzle so a save that no longer matches is discarded. The server only keeps each day's puzzle in SQLite, so changes to the generator never alter a day that's already stored.
 - **Mouse, touch and pen.** Drag to paint a line; right-click marks an X.

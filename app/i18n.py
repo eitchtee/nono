@@ -47,6 +47,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "next_puzzle": "Next puzzle in",
         "share": "Share",
         "copied": "Copied!",
+        "flawless": "Flawless",
+        "streak_one": "1-day streak",
+        "streak_other": "{n}-day streak",
+        "keep_streak": "Solve today's puzzle to keep it going",
+        "share_streak": "🔥 {n} days",
     },
     "pt-BR": {
         "description": "Um nonograma novo todo dia.",
@@ -84,6 +89,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "next_puzzle": "Próximo desafio em",
         "share": "Compartilhar",
         "copied": "Copiado!",
+        "flawless": "Sem erros",
+        "streak_one": "Sequência de 1 dia",
+        "streak_other": "Sequência de {n} dias",
+        "keep_streak": "Resolva o desafio de hoje para mantê-la",
+        "share_streak": "🔥 {n} dias",
     },
 }
 

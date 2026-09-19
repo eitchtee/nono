@@ -52,6 +52,9 @@
       <p class="lives big" :aria-label="livesLabel">
         <template x-for="n in maxLives"><span :class="{ lost: n > lives }">♥</span></template>
       </p>
+      <p class="streak-line" x-show="isToday && won && $store.streak.n > 0" :class="{ lit: $store.streak.today }">
+        {% include "_flame.svg" %}<span x-text="streakTitle()"></span>
+      </p>
       <p class="next" x-show="isToday">{{ t.next_puzzle }} <strong x-text="countdown"></strong></p>
       <div class="actions">
         <button class="primary" @click="share()" x-text="copied ? {{ t.copied|js }} : {{ t.share|js }}"></button>

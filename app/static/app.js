@@ -81,6 +81,31 @@ const isMobileOS = () =>
   /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); // iPadOS identifies as a Mac
 
+// Days in a row won, counting back from today (or from yesterday while today is still open).
+// A day only counts when it was won on that day, so catching up from the calendar can't build
+// a streak. Saves from before finishedOn existed are taken at their word.
+function readStreak() {
+  const wonOnTheDay = (iso) => {
+    const saved = load(gameKey(iso));
+    return saved?.status === "won" && (saved.finishedOn ?? iso) === iso;
+  };
+  const day = parseISO(todayISO());
+  const today = wonOnTheDay(toISO(day));
+  if (!today) day.setDate(day.getDate() - 1);
+  let n = 0;
+  while (wonOnTheDay(toISO(day))) {
+    n++;
+    day.setDate(day.getDate() - 1);
+  }
+  return { n, today };
+}
+const refreshStreak = () => Alpine.store("streak", readStreak());
+function streakTitle() {
+  const { n, today } = Alpine.store("streak");
+  const label = t(n === 1 ? "streak_one" : "streak_other", { n });
+  return today ? label : `${label}. ${t("keep_streak")}`;
+}
+
 // Cuelume loads as an ES module and sets window.cuelume; until then this is a no-op.
 const sfx = (name, volume = 1) => window.cuelume?.play(name, { volume });
 
@@ -98,6 +123,8 @@ function sealedFromStart(line) {
 
 document.addEventListener("alpine:init", () => {
   Alpine.store("view", currentView());
+  refreshStreak();
+  addEventListener("nono-update", refreshStreak); // every save bubbles up here
 
   Alpine.data("nono", (cfg) => ({
     ...cfg,
@@ -106,6 +133,7 @@ document.addEventListener("alpine:init", () => {
     cells: [],
     errors: [],
     lives: cfg.maxLives,
+    finishedOn: undefined, // the local date the game ended on, for streaks
     locks: { rows: [], cols: [] },
     tool: "fill",
     drag: null,
@@ -125,6 +153,7 @@ document.addEventListener("alpine:init", () => {
       this.cells = saved?.cells ?? Array(this.size * this.size).fill(EMPTY);
       this.errors = saved?.errors ?? [];
       this.lives = saved?.lives ?? this.maxLives;
+      this.finishedOn = saved?.finishedOn;
       if (saved && saved.fp !== this.fp) this.save(); // a valid save from an older app.js: stamp it
       this.updateLocks();
       this.clock = setInterval(() => (this.now = Date.now()), 1000);
@@ -145,7 +174,8 @@ document.addEventListener("alpine:init", () => {
 
     save() {
       const status = this.won ? "won" : this.lost ? "lost" : "playing";
-      store(this.key, { fp: this.fp, status, cells: this.cells, errors: this.errors, lives: this.lives });
+      const { fp, cells, errors, lives, finishedOn } = this;
+      store(this.key, { fp, status, cells, errors, lives, finishedOn });
       this.$dispatch("nono-update");
     },
 
@@ -250,6 +280,7 @@ document.addEventListener("alpine:init", () => {
         this.lives--;
         this.drag = null;
       }
+      if (this.over) this.finishedOn = todayISO();
       this.updateLocks();
       this.save();
 
@@ -272,9 +303,34 @@ document.addEventListener("alpine:init", () => {
       return completed;
     },
 
-    async share() {
+    // Where the mistakes were, without spoiling the picture: a red square could have been a
+    // wrong fill or a wrong X. A 10×10 shrinks to 5×5, one emoji per 2×2 block. After a loss,
+    // white marks what was still undecided.
+    get mistakeMap() {
+      const k = this.size / 5;
+      const block = (br, bc) => Array.from({ length: k * k }, (_, j) =>
+        (br * k + Math.floor(j / k)) * this.size + bc * k + (j % k));
+      return Array.from({ length: 5 }, (_, br) => Array.from({ length: 5 }, (_, bc) => {
+        const idx = block(br, bc);
+        if (idx.some((i) => this.errors.includes(i))) return "🟥";
+        if (idx.some((i) => this.cells[i] === EMPTY)) return "⬜";
+        return "🟩";
+      }).join("")).join("\n");
+    },
+
+    get shareText() {
       const hearts = "❤️".repeat(this.lives) + "🖤".repeat(this.maxLives - this.lives);
-      const text = `Nono #${this.number} · ${this.label} ${this.size}×${this.size}\n${this.won ? "✅" : "❌"} ${hearts}\n${location.origin}/${this.date}`;
+      // A streak of one isn't worth bragging about yet.
+      const { n } = this.$store.streak;
+      const streak = this.isToday && n >= 2 ? `\n${t("share_streak", { n })}` : "";
+      const flawless = this.won && !this.errors.length ? `\n✨ ${t("flawless")}` : "";
+      // Today's puzzle is whatever the home page shows; older ones go by number (/19 redirects to its date).
+      const link = this.isToday ? location.origin : `${location.origin}/${this.number}`;
+      return `Nono #${this.number} · ${this.label} ${this.size}×${this.size}\n${hearts}${flawless}\n\n${this.mistakeMap}\n${streak}\n${link}`;
+    },
+
+    async share() {
+      const text = this.shareText;
       // Like term.ooo: native share sheet on phones and tablets, clipboard on desktop
       // (desktop browsers also have navigator.share, but it opens the OS share dialog).
       if (isMobileOS() && navigator.share) {
@@ -390,6 +446,7 @@ document.addEventListener("alpine:init", () => {
         else if (date in days && saved.fp === undefined) store(key, { ...saved, fp: days[date].fp }); // stamp it
       }
       this.refresh();
+      refreshStreak();
     },
 
     status(iso) {

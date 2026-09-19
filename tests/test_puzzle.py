@@ -70,6 +70,16 @@ def test_day_urls():
         assert client.get(bad).status_code == 404
 
 
+def test_puzzle_numbers_redirect_to_their_day():
+    client = TestClient(app)
+    res = client.get("/19", follow_redirects=False)
+    assert res.status_code == 301
+    assert res.headers["location"] == "/2026-09-19"
+    assert client.get("/1", follow_redirects=False).headers["location"] == "/2026-09-01"
+    for bad in ["/0", "/019", "/99999"]:
+        assert client.get(bad, follow_redirects=False).status_code == 404
+
+
 def test_pwa_files():
     client = TestClient(app)
     manifest = client.get("/manifest.webmanifest")
