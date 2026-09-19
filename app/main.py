@@ -11,11 +11,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import i18n, store
-from .puzzle import DIFFICULTIES
+from .puzzle import LAUNCH, LIVES
 from .store import puzzle_for
 
 BASE = Path(__file__).parent
-LAUNCH = dt.date(2026, 9, 1)  # puzzle #1; the calendar starts here
 
 
 @asynccontextmanager
@@ -97,7 +96,7 @@ def board(request: Request, date: str):
         "fp": p.fingerprint,
         "rows": p.rows,
         "cols": p.cols,
-        "maxLives": DIFFICULTIES[p.difficulty][2],
+        "maxLives": LIVES[p.size],
     }
     # How many numbers the longest row / column clue has, so CSS can size the cells to fit.
     clue_lens = {"row_clue_len": max(len(r) for r in p.rows), "col_clue_len": max(len(c) for c in p.cols)}
@@ -111,4 +110,4 @@ def day_page(request: Request, day: str):
     return page(request)
 
 
-assert set(DIFFICULTIES) <= i18n.STRINGS[i18n.DEFAULT].keys(), "every difficulty needs a label"
+assert {"easy", "medium", "hard"} <= i18n.STRINGS[i18n.DEFAULT].keys(), "every difficulty needs a label"

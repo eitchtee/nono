@@ -1,42 +1,67 @@
 """Deterministic daily puzzle generation.
 
-There is one puzzle per day. The date seeds both the difficulty and the grid, so
-everyone gets the same puzzle. Grids are rejected until a pure line-by-line solver
-can finish them, which guarantees a unique solution that never needs guessing.
+There is one puzzle per day. The date seeds everything, so everyone gets the same puzzle,
+and every grid is checked by a pure line-by-line solver, which guarantees a unique solution
+that never needs guessing.
+
+The rules have changed over time. Each rule set applies from its date onwards, so days made
+under older rules keep exactly the same puzzle (the store also pins every day once generated,
+but days nobody has opened yet only have the generator to go on).
 """
 
+import datetime as dt
 import hashlib
 import random
 from dataclasses import dataclass
 from functools import lru_cache
 
-# difficulty -> (size, fill density, lives)
-DIFFICULTIES = {
-    "easy": (5, 0.6, 3),
-    "medium": (10, 0.58, 5),
-    "hard": (15, 0.55, 5),  # no longer picked for new days, but kept so old 15x15 days still load
-}
+LAUNCH = dt.date(2026, 9, 1)  # puzzle #1
+LIVES = {5: 3, 10: 5, 15: 5}  # by board size
 
-# Which difficulties a day can get, with their relative odds. Each rule applies from its date
-# onwards, so days generated under older rules keep exactly the same puzzle (the store also
-# pins every day once served, but days nobody has opened yet only have the generator).
-# Order matters: rng.choices draws from the dict in this order.
-RULES = [
+# --- Until 2026-09-19: the difficulty picked the size, and each size had a fixed fill density.
+LEGACY = {"easy": (5, 0.6), "medium": (10, 0.58), "hard": (15, 0.55)}
+# Order matters: rng.choices draws from each dict in this order.
+LEGACY_RULES = [
     ("2026-09-01", {"easy": 3, "medium": 4, "hard": 3}),
     ("2026-09-19", {"easy": 3, "medium": 4}),  # 15x15 dropped: too small to tap on phones
 ]
 
+# --- From 2026-09-20: each day draws a size and a difficulty tier, then grids are generated
+# until one measures inside that tier. Difficulty is measured, not assumed from the density.
+TIERED_FROM = "2026-09-20"
 
-def odds_for(date: str) -> dict[str, int]:
-    return next(odds for start, odds in reversed(RULES) if date >= start)
 
+@dataclass(frozen=True)
+class Tier:
+    weight: int  # relative odds of a day getting this size and tier
+    density: float  # chance of each square being filled; nudges candidates toward the tier
+    # Share of the grid the clues give away before any row and column are combined...
+    min_given: float = 0.0
+    max_given: float = 1.0
+    # ...and how many full passes the line solver needs.
+    min_passes: int = 1
+    max_passes: int = 99
+
+    def fits(self, given: float, passes: int) -> bool:
+        return self.min_given <= given <= self.max_given and self.min_passes <= passes <= self.max_passes
+
+
+# Bands set from measured distributions: a 10x10 at 58% gives away 43% up front (median),
+# 27-60% across most grids. 5x5 can't be made truly hard, so it only comes as easy or medium.
+TIERS = {
+    (5, "easy"): Tier(2, 0.62, min_given=0.68),
+    (5, "medium"): Tier(2, 0.52, max_given=0.48),
+    (10, "easy"): Tier(2, 0.60, min_given=0.50, max_passes=3),
+    (10, "medium"): Tier(3, 0.56, min_given=0.32, max_given=0.45),
+    (10, "hard"): Tier(3, 0.50, max_given=0.25, min_passes=4),
+}
 
 Line = list[int | None]  # 1 filled, 0 empty, None unknown
 
 
 @dataclass(frozen=True)
 class Puzzle:
-    difficulty: str
+    difficulty: str  # easy / medium / hard
     size: int
     grid: tuple[tuple[int, ...], ...]
     rows: list[list[int]]
@@ -112,14 +137,17 @@ def _deduce(clue: list[int], known: Line) -> Line:
     return [opts[0][i] if all(o[i] == opts[0][i] for o in opts) else known[i] for i in range(len(known))]
 
 
-def line_solvable(grid) -> bool:
+def solve_passes(grid) -> int | None:
+    """Full row-then-column passes the line solver needs to finish the grid, or None if it
+    gets stuck (the puzzle would need guessing)."""
     h, w = len(grid), len(grid[0])
     rows = [clues(r) for r in grid]
     cols = [clues(c) for c in zip(*grid)]
     known: list[Line] = [[None] * w for _ in range(h)]
-    solved = 0
+    solved = passes = 0
     while True:
         before = solved
+        passes += 1
         for r in range(h):
             known[r] = _deduce(rows[r], known[r])
         for c in range(w):
@@ -128,18 +156,46 @@ def line_solvable(grid) -> bool:
                 known[r][c] = col[r]
         solved = sum(v is not None for row in known for v in row)
         if solved == h * w:
-            return True
+            return passes
         if solved == before:
-            return False
+            return None
+
+
+def line_solvable(grid) -> bool:
+    return solve_passes(grid) is not None
+
+
+def given_away(grid) -> float:
+    """Share of the grid decidable from single rows or columns on an empty board."""
+    n = len(grid)
+    blank = [None] * n
+    known = {(r, i) for r, row in enumerate(grid) for i, v in enumerate(_deduce(clues(row), blank)) if v is not None}
+    known |= {(i, c) for c, col in enumerate(zip(*grid)) for i, v in enumerate(_deduce(clues(col), blank)) if v is not None}
+    return len(known) / (n * n)
+
+
+def _random_grid(rng: random.Random, size: int, density: float):
+    return tuple(tuple(int(rng.random() < density) for _ in range(size)) for _ in range(size))
+
+
+def _legacy(date: str, rng: random.Random) -> Puzzle:
+    odds = next(odds for start, odds in reversed(LEGACY_RULES) if date >= start)
+    difficulty = rng.choices(list(odds), weights=list(odds.values()))[0]
+    size, density = LEGACY[difficulty]
+    while True:
+        grid = _random_grid(rng, size, density)
+        if line_solvable(grid):
+            return Puzzle.from_grid(difficulty, grid)
 
 
 @lru_cache(maxsize=128)
 def daily(date: str) -> Puzzle:
     rng = random.Random(hashlib.sha256(f"nono:{date}".encode()).digest())
-    odds = odds_for(date)
-    difficulty = rng.choices(list(odds), weights=list(odds.values()))[0]
-    size, density, _ = DIFFICULTIES[difficulty]
+    if date < TIERED_FROM:
+        return _legacy(date, rng)
+    (size, difficulty), tier = rng.choices(list(TIERS.items()), weights=[t.weight for t in TIERS.values()])[0]
     while True:
-        grid = tuple(tuple(int(rng.random() < density) for _ in range(size)) for _ in range(size))
-        if line_solvable(grid):
+        grid = _random_grid(rng, size, tier.density)
+        passes = solve_passes(grid)
+        if passes is not None and tier.fits(given_away(grid), passes):
             return Puzzle.from_grid(difficulty, grid)

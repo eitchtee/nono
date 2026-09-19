@@ -1,12 +1,13 @@
+import datetime as dt
 from collections import Counter
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app import store
 from app.i18n import from_accept_language
 from app.main import app
-from app import store
-from app.puzzle import DIFFICULTIES, Puzzle, clues, daily, line_solvable
+from app.puzzle import LEGACY, TIERS, Puzzle, clues, daily, given_away, line_solvable, solve_passes
 
 
 def test_clues():
@@ -17,7 +18,7 @@ def test_clues():
 def test_daily_is_deterministic_and_solvable():
     p = daily("2026-09-18")
     assert p == daily.__wrapped__("2026-09-18")
-    assert p.size == DIFFICULTIES[p.difficulty][0]
+    assert p.size == LEGACY[p.difficulty][0]
     assert line_solvable(p.grid)
     assert p != daily("2026-09-19")
 
@@ -25,8 +26,15 @@ def test_daily_is_deterministic_and_solvable():
 def test_difficulty_varies_by_day():
     before = Counter(daily(f"2026-09-{d:02d}").difficulty for d in range(1, 19))
     assert set(before) == {"easy", "medium", "hard"}
-    after = Counter(daily(f"2026-10-{d:02d}").difficulty for d in range(1, 32))
-    assert set(after) == {"easy", "medium"}  # 15x15 isn't picked from 2026-09-19 on
+    days = [(dt.date(2026, 9, 20) + dt.timedelta(days=k)).isoformat() for k in range(120)]
+    mix = Counter((daily(d).size, daily(d).difficulty) for d in days)
+    assert set(mix) == set(TIERS)  # every size/tier combination shows up; no 15x15, no hard 5x5
+
+
+def test_tiered_days_measure_inside_their_tier():
+    for k in range(60):
+        p = daily((dt.date(2026, 9, 20) + dt.timedelta(days=k)).isoformat())
+        assert TIERS[(p.size, p.difficulty)].fits(given_away(p.grid), solve_passes(p.grid)), p
 
 
 def test_rule_changes_keep_older_days():
