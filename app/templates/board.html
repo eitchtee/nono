@@ -8,7 +8,7 @@
     <span class="meta">{{ cfg.label }} · {{ p.size }}×{{ p.size }}</span>
   </div>
 
-  <div class="grid" style="--n: {{ p.size }}; --rc: {{ row_clue_len }}"
+  <div class="grid" style="--n: {{ p.size }}; --rc: {{ row_clue_len }}; --cc: {{ col_clue_len }}"
     @pointerdown="down($event)" @contextmenu.prevent :class="{ over }">
     <div class="corner"></div>
     {% for clue in p.cols %}{% set c = loop.index0 %}

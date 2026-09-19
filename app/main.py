@@ -98,7 +98,9 @@ def board(request: Request, date: str):
         "cols": p.cols,
         "maxLives": DIFFICULTIES[p.difficulty][2],
     }
-    return render(request, "board.html", {"p": p, "cfg": cfg, "row_clue_len": max(len(r) for r in p.rows)})
+    # How many numbers the longest row / column clue has, so CSS can size the cells to fit.
+    clue_lens = {"row_clue_len": max(len(r) for r in p.rows), "col_clue_len": max(len(c) for c in p.cols)}
+    return render(request, "board.html", {"p": p, "cfg": cfg, **clue_lens})
 
 
 # Declared last so it doesn't shadow /board.

@@ -44,7 +44,10 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  padding: 8px 16px 32px;
+  padding: 8px var(--side) 32px;
+  --side: 16px;
+  /* Height taken by everything on the page except the grid (top bar, labels, tool switch). */
+  --chrome: 230px;
 }
 
 /* Shrink-wraps the grid so the bars above and below span exactly its width. */
@@ -65,9 +68,12 @@ body {
 .lives { display: inline-flex; gap: 3px; color: var(--accent); font-size: 20px; line-height: 1; }
 .lives .lost { color: var(--line); }
 
-/* Cell size fits the viewport: n cells plus room for the row clues. */
+/* Cells are as big as the screen allows: whichever runs out first, the width (n cells plus the
+   row clues) or the height (n cells plus the column clues, below the rest of the page). */
 .grid {
-  --cell: clamp(16px, calc((min(100vw, 600px) - 40px) / (var(--n) + var(--rc) * 0.75)), 40px);
+  --by-width: calc((min(100vw, 760px) - 2 * var(--side) - 8px) / (var(--n) + var(--rc) * 0.46));
+  --by-height: calc((100dvh - var(--chrome) - 8px) / (var(--n) + var(--cc) * 0.52));
+  --cell: clamp(18px, min(var(--by-width), var(--by-height)), 64px);
   display: grid;
   grid-template-columns: auto repeat(var(--n), var(--cell));
   grid-auto-rows: var(--cell);
@@ -75,7 +81,7 @@ body {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  font-size: calc(var(--cell) * 0.5);
+  font-size: calc(var(--cell) * 0.44);
   font-variant-numeric: tabular-nums;
 }
 .corner { border-right: 2px solid var(--line-strong); border-bottom: 2px solid var(--line-strong); }
@@ -96,8 +102,8 @@ body {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 0.45em;
-  padding-right: 6px;
+  gap: 0.35em;
+  padding-right: 5px;
   border-right: 2px solid var(--line-strong);
 }
 
@@ -503,6 +509,8 @@ body {
   .top { flex-wrap: wrap; justify-content: center; gap: 4px 2px; padding: 12px 12px 8px; }
   .logo { order: -1; position: static; translate: none; flex-basis: 100%; text-align: center; font-size: 34px; }
   .top-actions { gap: 2px; }
+  /* Narrower margins, and the two-row top bar is taller. */
+  .board { --side: 10px; --chrome: 270px; }
   /* The picker now sits mid-row, so centre its menu under it instead of hanging off the left edge. */
   .lang-menu { right: auto; left: 50%; translate: -50% 0; transform-origin: top center; }
 }
