@@ -10,6 +10,19 @@ const parseISO = (iso) => { const [y, m, d] = iso.split("-").map(Number); return
 const toISO = (date) => date.toLocaleDateString("en-CA");
 const gameKey = (iso) => `nono:${iso}`;
 
+// Whether a saved game belongs to a day's puzzle ({ fp, solution }). A save that carries a
+// fingerprint must match it. One without (saved by an older app.js, possibly on today's puzzle)
+// is judged by its marks instead: every mark is checked against the solution when it's made,
+// so a genuine save always agrees with it, while one from a different puzzle almost never does.
+function saveMatches(saved, { fp, solution }) {
+  if (!saved || (saved.fp !== undefined && saved.fp !== fp)) return false;
+  const { cells, errors = [] } = saved;
+  if (!Array.isArray(cells) || cells.length !== solution.length) return false;
+  const marksAgree = cells.every((v, i) =>
+    v === EMPTY || (v === FILL && solution[i] === "1") || (v === X && solution[i] === "0"));
+  return marksAgree && Array.isArray(errors) && errors.every((i) => Number.isInteger(i) && cells[i] !== EMPTY);
+}
+
 // UI strings come from the server (index.html) in the picked language; see app/i18n.py.
 const I18N = window.I18N ?? {};
 const t = (key, vars = {}) => (I18N[key] ?? key).replace(/\{(\w+)\}/g, (_, name) => vars[name]);
@@ -112,6 +125,7 @@ document.addEventListener("alpine:init", () => {
       this.cells = saved?.cells ?? Array(this.size * this.size).fill(EMPTY);
       this.errors = saved?.errors ?? [];
       this.lives = saved?.lives ?? this.maxLives;
+      if (saved && saved.fp !== this.fp) this.save(); // a valid save from an older app.js: stamp it
       this.updateLocks();
       this.clock = setInterval(() => (this.now = Date.now()), 1000);
       // A finished game (reload, or reopened from the calendar) shows its result right away;
@@ -135,18 +149,9 @@ document.addEventListener("alpine:init", () => {
       this.$dispatch("nono-update");
     },
 
-    // Whether a saved game belongs to this puzzle: it must carry the puzzle's fingerprint, and its
-    // marks can't contradict the board (every mark is checked against the solution when it's made,
-    // so a genuine save always agrees with it).
     savedGameFits(saved) {
-      if (saved.fp !== this.fp) return false;
-      const { cells, errors = [], lives = this.maxLives } = saved;
-      if (!Array.isArray(cells) || cells.length !== this.size * this.size) return false;
-      const marksAgree = cells.every((v, i) =>
-        v === EMPTY || (v === FILL && this.solution[i] === "1") || (v === X && this.solution[i] === "0"));
-      const errorsValid = Array.isArray(errors) && errors.every((i) => Number.isInteger(i) && cells[i] !== EMPTY);
-      const livesValid = Number.isInteger(lives) && lives >= 0 && lives <= this.maxLives;
-      return marksAgree && errorsValid && livesValid;
+      const { lives = this.maxLives } = saved;
+      return saveMatches(saved, this) && Number.isInteger(lives) && lives >= 0 && lives <= this.maxLives;
     },
 
     get filled() { return this.cells.filter((v) => v === FILL).length },
@@ -378,9 +383,11 @@ document.addEventListener("alpine:init", () => {
       for (const key of keys) {
         const date = key.match(/^nono:(\d{4}-\d{2}-\d{2})$/)?.[1];
         if (!date) continue;
-        // Dates before launch never had a puzzle; open dates must match. Dates that haven't opened
-        // on the server yet (a device clock running ahead) are left alone.
-        if (date < this.launch || (date in days && load(key)?.fp !== days[date])) forget(key);
+        // Dates before launch never had a puzzle; open dates must match their puzzle. Dates that
+        // haven't opened on the server yet (a device clock running ahead) are left alone.
+        const saved = load(key);
+        if (date < this.launch || (date in days && !saveMatches(saved, days[date]))) forget(key);
+        else if (date in days && saved.fp === undefined) store(key, { ...saved, fp: days[date].fp }); // stamp it
       }
       this.refresh();
     },

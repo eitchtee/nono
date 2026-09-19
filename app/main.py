@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import i18n, schedule, store
-from .puzzle import LAUNCH, LIVES
+from .puzzle import LAUNCH, LIVES, fingerprint
 from .store import puzzle_for
 
 BASE = Path(__file__).parent
@@ -133,11 +133,13 @@ def board(request: Request, date: str):
 
 @app.get("/api/days")
 def days():
-    """Fingerprint of every day that can be played now. The client drops any saved game
-    whose fingerprint doesn't match, so the calendar never shows a stale result."""
+    """Fingerprint and solution of every day that can be played now. The client drops saved
+    games that don't belong to their day's puzzle, so the calendar never shows a stale result.
+    (Solutions are no secret: every board already sends its own.)"""
     last = schedule.latest_open_date(dt.datetime.now(dt.UTC))
     dates = [(LAUNCH + dt.timedelta(days=k)).isoformat() for k in range((last - LAUNCH).days + 1)]
-    return JSONResponse({"days": store.fingerprints(dates)}, headers={"Cache-Control": "no-cache"})
+    days = {date: {"fp": fingerprint(solution), "solution": solution} for date, solution in store.solutions(dates).items()}
+    return JSONResponse({"days": days}, headers={"Cache-Control": "no-cache"})
 
 
 # Declared last so it doesn't shadow /board.
