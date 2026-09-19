@@ -124,10 +124,8 @@
 
   <main class="calendar-page" x-data x-show="$store.view === 'calendar'" x-cloak>
   <h2 class="page-title">{{ t.past_puzzles }}</h2>
-  <!-- Past days unlock once today's game is over. -->
   <section class="calendar" id="calendar" x-data='calendar({{ launch | tojson }})'
     @nono-update.window="refresh()" @nono-open.window="show($event.detail)">
-    <p class="locked" x-show="!unlocked">{{ t.locked }}</p>
     <header>
       <button class="nav" @click="shift(-1)" :disabled="!canPrev" aria-label="{{ t.prev_month }}">‹</button>
       <h2 x-text="monthLabel"></h2>

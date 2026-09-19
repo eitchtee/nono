@@ -27,9 +27,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "step_lives": 'Every move is checked. A wrong one costs a <span class="heart">♥</span> and shows the real square. '
         "You get 3 for a 5×5 puzzle and 5 for a 10×10. Lose them all and the puzzle is over.",
         "step_fills": "Only the filled squares count: crosses just help you think. Clue numbers fade once they're done.",
-        "step_daily": "There's a new puzzle every day. Finish it to unlock the ones you missed.",
+        "step_daily": "There's a new puzzle every day, and you can play the ones you missed from the calendar.",
         "lets_play": "Let's play",
-        "locked": "Finish today's puzzle to unlock the days you missed.",
         "prev_month": "Previous month",
         "next_month": "Next month",
         "won": "Solved",
@@ -65,9 +64,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "São 3 vidas no 5×5 e 5 no 10×10. Perdeu todas, acabou o desafio.",
         "step_fills": "Só os quadrados pintados contam: os X só ajudam a pensar. "
         "Os números das dicas se apagam quando concluídos.",
-        "step_daily": "Todo dia tem um desafio novo. Termine o de hoje para liberar os que você perdeu.",
+        "step_daily": "Todo dia tem um desafio novo, e dá para jogar os que você perdeu pelo calendário.",
         "lets_play": "Vamos jogar",
-        "locked": "Termine o desafio de hoje para liberar os dias que você perdeu.",
         "prev_month": "Mês anterior",
         "next_month": "Próximo mês",
         "won": "Resolvido",

@@ -339,14 +339,13 @@ document.addEventListener("alpine:init", () => {
     },
   }));
 
-  // Month view of past puzzles. Finished days open read-only (the board locks when over),
-  // so a solved or failed day can be reviewed but not replayed.
+  // Month view of past puzzles. Every day up to today can be opened. Finished days open read-only
+  // (the board locks when over), so a solved or failed day can be reviewed but not replayed.
   Alpine.data("calendar", (launch) => ({
     launch,
     today: todayISO(),
     current: todayISO(),
     month: null,
-    unlocked: false,
     version: 0, // bumped on every save so statuses re-read localStorage
     // Narrow weekday names in the browser's locale, Sunday first (2026-09-13 is a Sunday).
     weekdays: Array.from({ length: 7 }, (_, k) => new Date(2026, 8, 13 + k).toLocaleDateString(LOCALE, { weekday: "narrow" })),
@@ -357,10 +356,7 @@ document.addEventListener("alpine:init", () => {
       this.refresh();
     },
 
-    refresh() {
-      this.version++;
-      this.unlocked = ["won", "lost"].includes(load(gameKey(this.today))?.status);
-    },
+    refresh() { this.version++ },
 
     status(iso) {
       this.version;
@@ -395,7 +391,7 @@ document.addEventListener("alpine:init", () => {
           day: k + 1,
           status,
           label: `${parseISO(iso).toLocaleDateString(LOCALE, { day: "numeric", month: "long" })}: ${t(status ?? "not_played")}`,
-          disabled: iso < this.launch || iso > this.today || (!this.unlocked && iso !== this.today),
+          disabled: iso < this.launch || iso > this.today,
           cls: { [status]: !!status, today: iso === this.today, current: iso === this.current },
         };
       });

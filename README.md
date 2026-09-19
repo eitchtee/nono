@@ -2,7 +2,7 @@
 
 A new nonogram every day, in the spirit of [Termo](https://term.ooo).
 
-Fill the grid using the row and column clues. Every move is checked on the spot: a wrong one costs a life (3 on a 5×5, 5 on a 10×10) and reveals the real square. Everyone gets the same puzzle each day, and finishing it unlocks the days you missed.
+Fill the grid using the row and column clues. Every move is checked on the spot: a wrong one costs a life (3 on a 5×5, 5 on a 10×10) and reveals the real square. Everyone gets the same puzzle each day, and the calendar has every day you missed.
 
 ## Features
 
