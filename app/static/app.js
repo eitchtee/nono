@@ -117,15 +117,16 @@ function streakTitle() {
 const sfx = (name, volume = 1) => window.cuelume?.play(name, { volume });
 
 // How many blocks are finished counting in from the start of a line: walk until the first
-// undecided square; a block counts once an X or the edge closes it.
-function sealedFromStart(line) {
-  let sealed = 0, inBlock = false;
+// undecided square; a block counts once an X or the edge closes it, or once it reaches its clue's
+// length (marks are verified, so it can't grow and the next square must be an X).
+function sealedFromStart(line, clue) {
+  let sealed = 0, run = 0;
   for (const v of line) {
-    if (v === EMPTY) return sealed;
-    if (v === FILL) inBlock = true;
-    else if (inBlock) { sealed++; inBlock = false }
+    if (v === FILL) run++;
+    else if (v === EMPTY) return sealed + (run === clue[sealed] ? 1 : 0);
+    else if (run) { sealed++; run = 0 }
   }
-  return sealed + (inBlock ? 1 : 0);
+  return sealed + (run ? 1 : 0);
 }
 
 document.addEventListener("alpine:init", () => {
@@ -249,12 +250,13 @@ document.addEventListener("alpine:init", () => {
     lineDone(idx) { return idx.every((i) => this.solution[i] !== "1" || this.cells[i] === FILL) },
 
     // A clue number greys out once nothing can be added on its side of the line: every square
-    // from the nearer edge up to and including its block is decided (XXX■ greys, ___■ doesn't).
-    // Every mark is verified, so the Nth finished block from an edge is the Nth number from that end.
+    // from the nearer edge up to its block is decided and the block is closed or full-length
+    // (XXX■ and ■■■_ grey a leading 3, ■■__ and _■■■ don't). Every mark is verified, so the Nth finished
+    // block from an edge is the Nth number from that end.
     lineLocks(clue, idx) {
       if (clue[0] === 0) return [true]; // an empty line never gets anything added
       const line = idx.map((i) => this.cells[i]);
-      const fromStart = sealedFromStart(line), fromEnd = sealedFromStart(line.reverse());
+      const fromStart = sealedFromStart(line, clue), fromEnd = sealedFromStart(line.reverse(), clue.toReversed());
       return clue.map((_, k) => k < fromStart || k >= clue.length - fromEnd);
     },
 
